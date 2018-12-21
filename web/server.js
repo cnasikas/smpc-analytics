@@ -1,19 +1,5 @@
 /* global  __basedir */
 
-let SIMULATION_MODE = false
-process.argv.forEach(function (val) {
-  if (val === '-sim' || val === '--sim' || val === '-simulation' || val === '--simulation') {
-    SIMULATION_MODE = true
-  }
-})
-const printMsg = (SIMULATION_MODE) ? 'NODE SIMULATION' : 'NODE'
-
-if (SIMULATION_MODE) {
-  console.log('\n[NODE SIMULATION] Running in simulation mode\n')
-} else {
-  console.log('\n[NODE] Running in Secure Multiparty Computation mode with 3 servers\n')
-}
-
 // Imports
 const https = require('https')
 const http = require('http')
@@ -29,6 +15,15 @@ const morganBody = require('morgan-body')
 const level = require('level') // leveldb for requests-status and cache
 const rp = require('request-promise')
 const DateDiff = require('date-diff')
+
+const SIMULATION_MODE = process.argv.some((arg) => (arg === '-sim' || arg === '--sim' || arg === '-simulation' || arg === '--simulation'))
+const printMsg = (SIMULATION_MODE) ? 'NODE SIMULATION' : 'NODE'
+
+if (SIMULATION_MODE) {
+  console.log('\n[NODE SIMULATION] Running in simulation mode\n')
+} else {
+  console.log('\n[NODE] Running in Secure Multiparty Computation mode with 3 servers\n')
+}
 
 const app = express()
 app.use(bodyParser.json())
