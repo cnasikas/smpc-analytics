@@ -18,19 +18,21 @@ const level = require('level') // leveldb for requests-status and cache
 const rp = require('request-promise')
 const DateDiff = require('date-diff')
 
-const SIMULATION_MODE = process.argv.some((arg) => (arg === '-sim' || arg === '--sim' || arg === '-simulation' || arg === '--simulation'))
-const printMsg = (SIMULATION_MODE) ? 'NODE SIMULATION' : 'NODE'
+const db = level('./mydb')
+const cachedb = level('./cache-database')
+const app = express()
 
-if (SIMULATION_MODE) {
-  console.log('\n[NODE SIMULATION] Running in simulation mode\n')
-} else {
-  console.log('\n[NODE] Running in Secure Multiparty Computation mode with 3 servers\n')
-}
+const FRONTEND_PATH = path.join(__dirname, '/frontend/')
+const SIMULATION_MODE = process.argv.some((arg) => (arg === '-sim' || arg === '--sim' || arg === '-simulation' || arg === '--simulation'))
 const PRINT_MSG = (SIMULATION_MODE) ? 'NODE SIMULATION' : 'NODE'
 const HTTP_PORT = 80
 const HTTPS_PORT = 443
 
-const app = express()
+global.__basedir = __dirname
+
+const logStream = fs.createWriteStream(path.join(__dirname, 'requests.log'), { flags: 'a' })
+morganBody(app, { stream: logStream }) // log request body
+
 app.use(helmet())
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
@@ -40,23 +42,23 @@ app.use(cors({
   allowedHeaders: ['Content-Type']
 }))
 
-const frontend = path.join(__dirname, '/frontend/')
-global.__basedir = __dirname
-const logStream = fs.createWriteStream(path.join(__dirname, 'requests.log'), { flags: 'a' })
-morganBody(app, { stream: logStream }) // log request body
-
 app.use(morgan(':remote-addr \\n\\n', { stream: logStream })) // log request IP
-const db = level('./mydb')
-const cachedb = level('./cache-database')
-
-app.get('/', function (req, res) {
-  res.sendFile(path.join(frontend + 'index.html'))
-})
 
 app.use(express.static(path.join(__dirname, 'frontend'))) // public/static files
 app.use('/visuals', express.static(path.join(__dirname, '/visuals')))
 app.use('/graphs', express.static(path.join(__dirname, '/graphs')))
 app.use('/.well-known/acme-challenge/', express.static(path.join(__dirname, '/.well-known/acme-challenge/')))
+
+if (SIMULATION_MODE) {
+  console.log('\n[NODE SIMULATION] Running in simulation mode\n')
+} else {
+  console.log('\n[NODE] Running in Secure Multiparty Computation mode with 3 servers\n')
+}
+
+app.get('/', function (req, res) {
+  res.sendFile(path.join(FRONTEND_PATH, 'index.html'))
+})
+
 
 if (fs.existsSync('./sslcert/fullchain.pem')) {
   const options = {
