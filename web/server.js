@@ -9,6 +9,7 @@ const { execSync } = require('child_process')
 const fs = require('fs')
 const uuidv4 = require('uuid/v4')
 const path = require('path')
+const helmet = require('helmet')
 const bodyParser = require('body-parser')
 const morgan = require('morgan') // for requests logging
 const morganBody = require('morgan-body')
@@ -26,6 +27,7 @@ if (SIMULATION_MODE) {
 }
 
 const app = express()
+app.use(helmet())
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
 

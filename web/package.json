@@ -10,8 +10,8 @@
   },
   "author": "Dimitris Mouris, Thanos Giannopoulos",
   "license": "ISC",
-  "engines" : {
-    "node" : ">=8.0.0 <11.0.0"
+  "engines": {
+    "node": ">=8.0.0 <11.0.0"
   },
   "dependencies": {
     "body-parser": "^1.18.2",
@@ -21,7 +21,7 @@
     "date-diff": "^0.2.0",
     "express": "^4.16.3",
     "fs": "0.0.1-security",
-    "helmet": "^3.12.1",
+    "helmet": "^3.15.0",
     "level": "^3.0.0",
     "morgan": "^1.9.0",
     "morgan-body": "^2.4.0",
