@@ -27,6 +27,8 @@ if (SIMULATION_MODE) {
   console.log('\n[NODE] Running in Secure Multiparty Computation mode with 3 servers\n')
 }
 const PRINT_MSG = (SIMULATION_MODE) ? 'NODE SIMULATION' : 'NODE'
+const HTTP_PORT = 80
+const HTTPS_PORT = 443
 
 const app = express()
 app.use(helmet())
@@ -62,19 +64,17 @@ if (fs.existsSync('./sslcert/fullchain.pem')) {
     key: fs.readFileSync('./sslcert/privkey.pem')
   }
 
-  const httpPort = 80
-  const httpsPort = 443
   http.createServer(function (req, res) {
     if ('headers' in req && 'host' in req.headers) {
-      res.writeHead(307, { 'Location': 'https://' + req.headers.host.replace(httpPort, httpsPort) + req.url })
+      res.writeHead(307, { 'Location': 'https://' + req.headers.host.replace(HTTP_PORT, HTTPS_PORT) + req.url })
       console.log('http request, will go to >> ')
-      console.log('https://' + req.headers.host.replace(httpPort, httpsPort) + req.url)
+      console.log('https://' + req.headers.host.replace(HTTP_PORT, HTTPS_PORT) + req.url)
       res.end()
     }
-  }).listen(httpPort)
+  }).listen(HTTP_PORT)
 
   // app.listen(port, () => console.log('Example app listening on port ' + port + '!'));
-  let server = https.createServer(options, app).listen(httpsPort, () => console.log('Example app listening on port ' + httpPort + '!'))
+  let server = https.createServer(options, app).listen(HTTPS_PORT, () => console.log('Example app listening on port ' + HTTP_PORT + '!'))
   server.setTimeout(2000 * 60 * 60) // ((2 sec * 60 = 2 min) * 60 = 2 hours)
 } else {
   const port = 3000
