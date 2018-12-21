@@ -10,6 +10,7 @@ const fs = require('fs')
 const uuidv4 = require('uuid/v4')
 const path = require('path')
 const helmet = require('helmet')
+const cors = require('cors')
 const bodyParser = require('body-parser')
 const morgan = require('morgan') // for requests logging
 const morganBody = require('morgan-body')
@@ -30,6 +31,11 @@ const app = express()
 app.use(helmet())
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'PUT', 'POST', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type']
+}))
 
 const frontend = path.join(__dirname, '/frontend/')
 global.__basedir = __dirname
@@ -212,9 +218,6 @@ function importLocally (attributes, datasources, res, parent, uid, type) {
 }
 
 app.options('/*', function (req, res) {
-  res.header('Access-Control-Allow-Origin', '*')
-  res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-  res.header('Access-Control-Allow-Headers', 'Content-Type')
   res.sendStatus(200)
 })
 
@@ -222,11 +225,9 @@ app.get('/smpc/queue', function (req, res) {
   let request = req.query.request
   db.get(request)
     .then((value) => {
-      res.setHeader('Access-Control-Allow-Origin', '*')
       res.status(200).json(JSON.parse(value))
     }).catch((err) => {
       console.log(FgRed + '[NODE] ' + ResetColor + err)
-      res.setHeader('Access-Control-Allow-Origin', '*')
       res.status(200).json({ 'status': 'notstarted' })
     })
 })
@@ -244,7 +245,6 @@ app.post('/smpc/histogram', function (req, res) {
   db.put(uid, JSON.stringify({ 'status': 'running' }))
   let plot = ('plot' in req.body) // if plot exists in req.body
   if (!plot) {
-    res.setHeader('Access-Control-Allow-Origin', '*')
     res.status(202).json({ 'location': '/smpc/queue?request=' + uid })
   }
   // create list of attribute names from the POST request
@@ -441,7 +441,6 @@ app.post('/smpc/count', function (req, res) {
   let plot = ('plot' in req.body) // if plot exists in req.body
   db.put(uid, JSON.stringify({ 'status': 'running' }))
   if (!plot) {
-    res.setHeader('Access-Control-Allow-Origin', '*')
     res.status(202).json({ 'location': '/smpc/queue?request=' + uid })
   }
 
@@ -649,7 +648,6 @@ function decisionTreeCvi (req, res) {
   db.put(uid, JSON.stringify({ 'status': 'running' }))
   let plot = ('plot' in req.body) // if plot exists in req.body
   if (!plot) {
-    res.setHeader('Access-Control-Allow-Origin', '*')
     res.status(202).json({ 'location': '/smpc/queue?request=' + uid })
   }
 
@@ -870,7 +868,6 @@ function decisionTreeMesh (req, res) {
   db.put(uid, JSON.stringify({ 'status': 'running' }))
   let plot = ('plot' in req.body) // if plot exists in req.body
   if (!plot) {
-    res.setHeader('Access-Control-Allow-Origin', '*')
     res.status(202).json({ 'location': '/smpc/queue?request=' + uid })
   }
 
