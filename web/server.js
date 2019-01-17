@@ -1029,8 +1029,3 @@ function decisionTreeMesh (req, res) {
         })
     })
 }
-
-const FgRed = '\x1b[31m'
-const FgGreen = '\x1b[32m'
-const FgYellow = '\x1b[33m'
-const ResetColor = '\x1b[0m'

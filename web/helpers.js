@@ -12,10 +12,18 @@ const _unlinkIfExists = async (filename) => {
   await _unlink(filename)
 }
 
+const colors = {
+  'red': '\x1b[31m',
+  'green': 'x1b[32m',
+  'yellow': '\x1b[33m',
+  'reset': '\x1b[0m'
+}
+
 module.exports = {
   _writeFile,
   _exec,
   _stat,
   _unlink,
-  _unlinkIfExists
+  _unlinkIfExists,
+  colors
 }
