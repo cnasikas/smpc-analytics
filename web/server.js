@@ -19,6 +19,7 @@ const rp = require('request-promise')
 const DateDiff = require('date-diff')
 
 const { _writeFile, _exec, _unlinkIfExists } = require('./helpers')
+const { ErrorHandler } = require('./middlewares/error')
 const routes = require('./routes')
 
 const db = level('./mydb')
@@ -48,6 +49,8 @@ app.use(cors({
 
 app.use(morgan(':remote-addr \\n\\n', { stream: logStream })) // log request IP
 
+app.use(ErrorHandler)
+
 app.use(express.static(path.join(__dirname, 'frontend'))) // public/static files
 app.use('/visuals', express.static(path.join(__dirname, '/visuals')))
 app.use('/graphs', express.static(path.join(__dirname, '/graphs')))
@@ -62,7 +65,6 @@ if (SIMULATION_MODE) {
 app.get('/', function (req, res) {
   res.sendFile(path.join(FRONTEND_PATH, 'index.html'))
 })
-
 
 if (fs.existsSync('./sslcert/fullchain.pem')) {
   const options = {
