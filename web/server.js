@@ -4,7 +4,6 @@
 const https = require('https')
 const http = require('http')
 const express = require('express')
-const { exec } = require('child_process')
 const { execSync } = require('child_process')
 const fs = require('fs')
 const uuidv4 = require('uuid/v4')
@@ -18,8 +17,12 @@ const level = require('level') // leveldb for requests-status and cache
 const rp = require('request-promise')
 const DateDiff = require('date-diff')
 
+const { _writeFile, _exec, _unlinkIfExists } = require('./helpers')
+const routes = require('./routes')
+
 const db = level('./mydb')
 const cachedb = level('./cache-database')
+
 const app = express()
 
 const FRONTEND_PATH = path.join(__dirname, '/frontend/')
@@ -84,57 +87,6 @@ if (fs.existsSync('./sslcert/fullchain.pem')) {
   server.setTimeout(2000 * 60 * 60) // ((2 sec * 60 = 2 min) * 60 = 2 hours)
 }
 
-// function to return a promise to write to file
-function _writeFile (filename, content, encoding = null) {
-  return new Promise((resolve, reject) => {
-    try {
-      fs.writeFile(filename, content, encoding, (err, buffer) => {
-        if (err) {
-          reject(err)
-        } else {
-          resolve(buffer)
-        }
-      })
-    } catch (err) {
-      reject(err)
-    }
-  })
-}
-
-// function to return a promise to exec a process
-function _exec (script, args) {
-  return new Promise((resolve, reject) => {
-    try {
-      exec(script, args, (err, buffer) => {
-        if (err) {
-          reject(err)
-        } else {
-          resolve(buffer)
-        }
-      })
-    } catch (err) {
-      reject(err)
-    }
-  })
-}
-
-// function to return a promise to unlink a file if exists
-function _unlinkIfExists (filename) {
-  return new Promise((resolve, reject) => {
-    fs.stat(filename, (err) => {
-      if (err === null) {
-        fs.unlink(filename, err => {
-          if (err) {
-            return reject(err)
-          }
-          resolve(`Removing document at ${path}`)
-        })
-      } else if (err.code === 'ENOENT') {
-        resolve('File does not exist')
-      }
-    })
-  })
-}
 
 // function to return a promise to send request for import
 function _sendRequest (datasrc, mhmdDNS, attributes, uid, action) {
