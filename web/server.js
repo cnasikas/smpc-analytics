@@ -14,7 +14,6 @@ const cors = require('cors')
 const bodyParser = require('body-parser')
 const morgan = require('morgan') // for requests logging
 const morganBody = require('morgan-body')
-const level = require('level') // leveldb for requests-status and cache
 const rp = require('request-promise')
 const DateDiff = require('date-diff')
 
@@ -22,9 +21,6 @@ const { _writeFile, _exec, _unlinkIfExists } = require('./helpers')
 const { ErrorHandler } = require('./middlewares/error')
 const routes = require('./routes')
 
-const db = level('./mydb')
-const cachedb = level('./cache-database')
-const routes = require('./routes')
 const app = express()
 
 const FRONTEND_PATH = path.join(__dirname, '/frontend/')
