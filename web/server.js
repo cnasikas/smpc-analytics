@@ -24,7 +24,7 @@ const routes = require('./routes')
 
 const db = level('./mydb')
 const cachedb = level('./cache-database')
-
+const routes = require('./routes')
 const app = express()
 
 const FRONTEND_PATH = path.join(__dirname, '/frontend/')
@@ -48,6 +48,10 @@ app.use(cors({
 }))
 
 app.use(morgan(':remote-addr \\n\\n', { stream: logStream })) // log request IP
+
+for (const url in routes) {
+  app.use(url, routes[url])
+}
 
 app.use(ErrorHandler)
 
@@ -175,20 +179,6 @@ function importLocally (attributes, datasources, res, parent, uid, type) {
   return importPromises
 }
 
-app.options('/*', function (req, res) {
-  res.sendStatus(200)
-})
-
-app.get('/smpc/queue', function (req, res) {
-  let request = req.query.request
-  db.get(request)
-    .then((value) => {
-      res.status(200).json(JSON.parse(value))
-    }).catch((err) => {
-      console.log(FgRed + '[NODE] ' + ResetColor + err)
-      res.status(200).json({ 'status': 'notstarted' })
-    })
-})
 
 app.post('/smpc/histogram', function (req, res) {
   let i
