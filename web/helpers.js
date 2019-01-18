@@ -3,7 +3,7 @@ const fs = require('fs')
 const { exec } = require('child_process')
 const axios = require('axios')
 
-const db = require('./dp')
+const { db } = require('./db')
 
 const _writeFile = util.promisify(fs.writeFile)
 const _readFile = util.promisify(fs.readFile)
@@ -36,7 +36,7 @@ const importFromServers = async (attributes, datasources, uid, action, DNSfile) 
   for (let datasrc of datasources) { // Check that all IPs exist
     if ((datasrc in mhmdDNS) === false) { // If datasrc does not exist in DNS file, continue
       console.log(colors.red + 'Error: ' + colors.reset + 'Unable to find IP for ' + datasrc + ', it does not exist in MHMDdns.json file.')
-      return res.status(500).send('Failure on data importing from ' + datasrc)
+      throw new Error('Failure on data importing from ' + datasrc)
     }
   }
 
@@ -54,7 +54,7 @@ const importFromServers = async (attributes, datasources, uid, action, DNSfile) 
 }
 
 // function to import local data and return promise
-const importLocally = async (attributes, datasources, res, parent, uid, type) => {
+const importLocally = async (attributes, datasources, parent, uid, type) => {
   const localDNS = JSON.parse(await _readFile('localDNS.json', 'utf8'))
 
   if (typeof datasources === 'undefined') {
@@ -64,7 +64,7 @@ const importLocally = async (attributes, datasources, res, parent, uid, type) =>
   for (let datasrc of datasources) { // Check that all IPs exist
     if ((datasrc in localDNS) === false) { // If datasrc does not exist in DNS file, continue
       console.log(colors.red + 'Error: ' + colors.reset + 'Unable to find path for ' + datasrc + ', it does not exist in localDNS.json file.')
-      return res.status(500).send('Failure on data importing from ' + datasrc)
+      throw new Error('Failure on data importing from ' + datasrc)
     }
   }
 
