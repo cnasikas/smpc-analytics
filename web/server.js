@@ -17,7 +17,7 @@ const morganBody = require('morgan-body')
 const rp = require('request-promise')
 const DateDiff = require('date-diff')
 
-const { _writeFile, _exec, _unlinkIfExists } = require('./helpers')
+const { _writeFile, _exec, _unlinkIfExists, colors } = require('./helpers')
 const { ErrorHandler } = require('./middlewares/error')
 const routes = require('./routes')
 
@@ -104,7 +104,7 @@ function _sendRequest (datasrc, mhmdDNS, attributes, uid, action) {
     json: true // Automatically stringifies the body to JSON
   }
 
-  console.log(FgGreen + 'Request for import sent to: ' + datasrc + ' at ' + uri + ResetColor)
+  console.log(colors.green + 'Request for import sent to: ' + datasrc + ' at ' + uri + colors.reset)
   return rp(options) // Return promise to start the request
 }
 
@@ -116,7 +116,7 @@ function importFromServers (attributes, datasources, res, parent, uid, action, D
   }
   for (let datasrc of datasources) { // Check that all IPs exist
     if ((datasrc in mhmdDNS) === false) { // If datasrc does not exist in DNS file, continue
-      console.log(FgRed + 'Error: ' + ResetColor + 'Unable to find IP for ' + datasrc + ', it does not exist in MHMDdns.json file.')
+      console.log(colors.red + 'Error: ' + colors.reset + 'Unable to find IP for ' + datasrc + ', it does not exist in MHMDdns.json file.')
       return res.status(400).send('Failure on data importing from ' + datasrc)
     }
   }
@@ -140,7 +140,7 @@ function importLocally (attributes, datasources, res, parent, uid, type) {
   }
   for (let datasrc of datasources) { // Check that all IPs exist
     if ((datasrc in localDNS) === false) { // If datasrc does not exist in DNS file, continue
-      console.log(FgRed + 'Error: ' + ResetColor + 'Unable to find path for ' + datasrc + ', it does not exist in localDNS.json file.')
+      console.log(colors.red + 'Error: ' + colors.reset + 'Unable to find path for ' + datasrc + ', it does not exist in localDNS.json file.')
       return res.status(400).send('Failure on data importing from ' + datasrc)
     }
   }
@@ -227,18 +227,18 @@ app.post('/smpc/histogram', function (req, res) {
   cachedb.get(requestKey)
     .then((value) => {
       if (notUseCache) {
-        console.log('[' + PRINT_MSG + '] ' + FgYellow + 'Request(' + uid + ') User has set the flag cache to NO in request body, goind to recompute it!\n' + ResetColor)
+        console.log('[' + PRINT_MSG + '] ' + colors.yellow + 'Request(' + uid + ') User has set the flag cache to NO in request body, goind to recompute it!\n' + colors.reset)
         throw new Error('User has set the flag cache to NO in request body, goind to recompute it!') // go to catch
       }
-      console.log('[' + PRINT_MSG + '] ' + FgGreen + 'Request(' + uid + ') Key: ' + requestKey + ' found in cache-db!\n' + ResetColor)
+      console.log('[' + PRINT_MSG + '] ' + colors.green + 'Request(' + uid + ') Key: ' + requestKey + ' found in cache-db!\n' + colors.reset)
 
       let valueArray = value.split(', date:')
       let diff = new DateDiff(new Date(), new Date(valueArray[1]))
       // if previous computation was a month ago, recompute it
       if (diff.days() > 30) {
-        console.log('[' + PRINT_MSG + '] ' + FgYellow + 'Request(' + uid + ') Key: ' + requestKey + ' has expired, goind to recompute it!\n' + ResetColor)
+        console.log('[' + PRINT_MSG + '] ' + colors.yellow + 'Request(' + uid + ') Key: ' + requestKey + ' has expired, goind to recompute it!\n' + colors.reset)
         cachedb.del(requestKey).catch((err) => { // delete previous result
-          console.log(FgRed + '[' + PRINT_MSG + '] ' + ResetColor + err)
+          console.log(colors.red + '[' + PRINT_MSG + '] ' + colors.reset + err)
         })
         throw new Error('Result has expired, goind to recompute it!') // go to catch
       }
@@ -251,11 +251,11 @@ app.post('/smpc/histogram', function (req, res) {
         const resultObj = { 'status': 'succeeded', 'result': '' }
         resultObj.result = JSON.parse(result)
         db.put(uid, JSON.stringify(resultObj)).catch((err) => {
-          console.log(FgRed + '[' + PRINT_MSG + '] ' + ResetColor + err)
+          console.log(colors.red + '[' + PRINT_MSG + '] ' + colors.reset + err)
         })
       }
     }).catch(() => { // If request has not been computed
-      console.log('[' + PRINT_MSG + '] ' + FgYellow + 'Request(' + uid + ') Key: ' + requestKey + ' not found in cache-db.\n' + ResetColor)
+      console.log('[' + PRINT_MSG + '] ' + colors.yellow + 'Request(' + uid + ') Key: ' + requestKey + ' not found in cache-db.\n' + colors.reset)
 
       let importPromises = []
       if (SIMULATION_MODE) {
@@ -266,7 +266,7 @@ app.post('/smpc/histogram', function (req, res) {
 
       Promise.all(importPromises)
         .then(() => {
-          console.log(FgGreen + 'Importing Finished ' + ResetColor)
+          console.log(colors.green + 'Importing Finished ' + colors.reset)
           return _writeFile(parent + '/configuration_' + uid + '.json', content, 'utf8')
         }).then(() => {
           console.log('[' + PRINT_MSG + '] Request(' + uid + ') Configuration file was saved.\n')
@@ -287,7 +287,7 @@ app.post('/smpc/histogram', function (req, res) {
           console.log('[' + PRINT_MSG + '] Request(' + uid + ') Main generated.\n')
           const dbMsg = (SIMULATION_MODE) ? 'SecreC code generated. Now compiling.' : 'SecreC code generated. Now compiling and running.'
           db.put(uid, JSON.stringify({ 'status': 'running', 'step': dbMsg })).catch((err) => {
-            console.log(FgRed + '[' + PRINT_MSG + '] ' + ResetColor + err)
+            console.log(colors.red + '[' + PRINT_MSG + '] ' + colors.reset + err)
           })
           return _unlinkIfExists(parent + '/histogram/.main_' + uid + '.sb.src')
         }).then(() => {
@@ -300,7 +300,7 @@ app.post('/smpc/histogram', function (req, res) {
               'status': 'running',
               'step': 'SecreC code compiled. Now running.'
             })).catch((err) => {
-              console.log(FgRed + '[NODE] ' + ResetColor + err)
+              console.log(colors.red + '[NODE] ' + colors.reset + err)
             })
             console.log('[NODE SIMULATION] Request(' + uid + ') Program compiled.\n')
             return _exec('sharemind-scripts/run.sh histogram/main_' + uid + '.sb 2> out_' + uid + '.txt', {
@@ -313,7 +313,7 @@ app.post('/smpc/histogram', function (req, res) {
               'status': 'running',
               'step': 'SecreC code compiled and run. Now generating output.'
             })).catch((err) => {
-              console.log(FgRed + '[NODE] ' + ResetColor + err)
+              console.log(colors.red + '[NODE] ' + colors.reset + err)
             })
             console.log('[NODE] Request(' + uid + ') Program executed.\n')
             return _exec('grep --fixed-strings --text "`grep --text "' + uid + '" /etc/sharemind/server.log | tail -n 1 | cut -d " "  -f "7-8"`" /etc/sharemind/server.log | cut -d " "  -f "9-" >  out_' + uid + '.txt', {
@@ -328,7 +328,7 @@ app.post('/smpc/histogram', function (req, res) {
               'status': 'running',
               'step': 'SecreC code run. Now generating output.'
             })).catch((err) => {
-              console.log(FgRed + '[NODE] ' + ResetColor + err)
+              console.log(colors.red + '[NODE] ' + colors.reset + err)
             })
             console.log('[NODE SIMULATION] Request(' + uid + ') Program executed.\n')
           }
@@ -352,21 +352,21 @@ app.post('/smpc/histogram', function (req, res) {
             const resultObj = { 'status': 'succeeded', 'result': '' }
             resultObj.result = JSON.parse(result)
             db.put(uid, JSON.stringify(resultObj)).catch((err) => {
-              console.log(FgRed + '[' + PRINT_MSG + '] ' + ResetColor + err)
+              console.log(colors.red + '[' + PRINT_MSG + '] ' + colors.reset + err)
             })
             requestCacheResult = result
           }
 
           cachedb.put(requestKey, requestCacheResult + ', date:' + new Date())
             .catch((err) => {
-              console.log(FgRed + '[NODE] ' + ResetColor + err)
+              console.log(colors.red + '[NODE] ' + colors.reset + err)
             })
         }).catch((err) => {
           db.put(uid, JSON.stringify({ 'status': 'failed' }))
             .catch((err) => {
-              console.log(FgRed + '[' + PRINT_MSG + '] ' + ResetColor + err)
+              console.log(colors.red + '[' + PRINT_MSG + '] ' + colors.reset + err)
             })
-          console.log(FgRed + '[' + PRINT_MSG + '] ' + ResetColor + err)
+          console.log(colors.red + '[' + PRINT_MSG + '] ' + colors.reset + err)
           res.sendStatus(400)
         })
     })
@@ -412,18 +412,18 @@ app.post('/smpc/count', function (req, res) {
   cachedb.get(requestKey)
     .then((value) => {
       if (notUseCache) {
-        console.log('[' + PRINT_MSG + '] ' + FgYellow + 'Request(' + uid + ') User has set the flag cache to NO in request body, goind to recompute it!\n' + ResetColor)
+        console.log('[' + PRINT_MSG + '] ' + colors.yellow + 'Request(' + uid + ') User has set the flag cache to NO in request body, goind to recompute it!\n' + colors.reset)
         throw new Error('User has set the flag cache to NO in request body, goind to recompute it!') // go to catch
       }
-      console.log('[' + PRINT_MSG + '] ' + FgGreen + 'Request(' + uid + ') Key: ' + requestKey + ' found in cache-db!\n' + ResetColor)
+      console.log('[' + PRINT_MSG + '] ' + colors.green + 'Request(' + uid + ') Key: ' + requestKey + ' found in cache-db!\n' + colors.reset)
 
       let valueArray = value.split(', date:')
       let diff = new DateDiff(new Date(), new Date(valueArray[1]))
       // if previous computation was a month ago, recompute it
       if (diff.days() > 30) {
-        console.log('[' + PRINT_MSG + '] ' + FgYellow + 'Request(' + uid + ') Key: ' + requestKey + ' has expired, goind to recompute it!\n' + ResetColor)
+        console.log('[' + PRINT_MSG + '] ' + colors.yellow + 'Request(' + uid + ') Key: ' + requestKey + ' has expired, goind to recompute it!\n' + colors.reset)
         cachedb.del(requestKey).catch((err) => { // delete previous result
-          console.log(FgRed + '[' + PRINT_MSG + '] ' + ResetColor + err)
+          console.log(colors.red + '[' + PRINT_MSG + '] ' + colors.reset + err)
         })
         throw new Error('Result has expired, goind to recompute it!') // go to catch
       }
@@ -436,11 +436,11 @@ app.post('/smpc/count', function (req, res) {
         const resultObj = { 'status': 'succeeded', 'result': '' }
         resultObj.result = JSON.parse(result)
         db.put(uid, JSON.stringify(resultObj)).catch((err) => {
-          console.log(FgRed + '[' + PRINT_MSG + '] ' + ResetColor + err)
+          console.log(colors.red + '[' + PRINT_MSG + '] ' + colors.reset + err)
         })
       }
     }).catch(() => { // If request has not been computed
-      console.log('[' + PRINT_MSG + '] ' + FgYellow + 'Request(' + uid + ') Key: ' + requestKey + ' not found in cache-db.\n' + ResetColor)
+      console.log('[' + PRINT_MSG + '] ' + colors.yellow + 'Request(' + uid + ') Key: ' + requestKey + ' not found in cache-db.\n' + colors.reset)
 
       // create array of requests for import
       let importPromises = []
@@ -453,7 +453,7 @@ app.post('/smpc/count', function (req, res) {
       // wait them all to finish
       Promise.all(importPromises)
         .then(() => {
-          console.log(FgGreen + 'Importing Finished ' + ResetColor)
+          console.log(colors.green + 'Importing Finished ' + colors.reset)
           return _writeFile(parent + '/configuration_' + uid + '.json', content, 'utf8')
         }).then(() => {
           console.log('[' + PRINT_MSG + '] Request(' + uid + ') Configuration file was saved.\n')
@@ -474,7 +474,7 @@ app.post('/smpc/count', function (req, res) {
           console.log('[' + PRINT_MSG + '] Request(' + uid + ') Main generated.\n')
           const dbMsg = (SIMULATION_MODE) ? 'SecreC code generated. Now compiling.' : 'SecreC code generated. Now compiling and running.'
           db.put(uid, JSON.stringify({ 'status': 'running', 'step': dbMsg })).catch((err) => {
-            console.log(FgRed + '[' + PRINT_MSG + '] ' + ResetColor + err)
+            console.log(colors.red + '[' + PRINT_MSG + '] ' + colors.reset + err)
           })
           return _unlinkIfExists(parent + '/histogram/.main_' + uid + '.sb.src')
         }).then(() => {
@@ -487,7 +487,7 @@ app.post('/smpc/count', function (req, res) {
               'status': 'running',
               'step': 'SecreC code compiled. Now running.'
             })).catch((err) => {
-              console.log(FgRed + '[NODE] ' + ResetColor + err)
+              console.log(colors.red + '[NODE] ' + colors.reset + err)
             })
             console.log('[NODE SIMULATION] Request(' + uid + ') Program compiled.\n')
             return _exec('sharemind-scripts/run.sh histogram/main_' + uid + '.sb 2> out_' + uid + '.txt', {
@@ -500,7 +500,7 @@ app.post('/smpc/count', function (req, res) {
               'status': 'running',
               'step': 'SecreC code compiled and run. Now generating output.'
             })).catch((err) => {
-              console.log(FgRed + '[NODE] ' + ResetColor + err)
+              console.log(colors.red + '[NODE] ' + colors.reset + err)
             })
             console.log('[NODE] Request(' + uid + ') Program executed.\n')
             return _exec('grep --fixed-strings --text "`grep --text "' + uid + '" /etc/sharemind/server.log | tail -n 1 | cut -d " "  -f "7-8"`" /etc/sharemind/server.log | cut -d " "  -f "9-" >  out_' + uid + '.txt', {
@@ -515,7 +515,7 @@ app.post('/smpc/count', function (req, res) {
               'status': 'running',
               'step': 'SecreC code run. Now generating output.'
             })).catch((err) => {
-              console.log(FgRed + '[NODE] ' + ResetColor + err)
+              console.log(colors.red + '[NODE] ' + colors.reset + err)
             })
             console.log('[NODE SIMULATION] Request(' + uid + ') Program executed.\n')
           }
@@ -542,21 +542,21 @@ app.post('/smpc/count', function (req, res) {
             const resultObj = { 'status': 'succeeded', 'result': '' }
             resultObj.result = JSON.parse(result)
             db.put(uid, JSON.stringify(resultObj)).catch((err) => {
-              console.log(FgRed + '[' + PRINT_MSG + '] ' + ResetColor + err)
+              console.log(colors.red + '[' + PRINT_MSG + '] ' + colors.reset + err)
             })
             requestCacheResult = result
           }
 
           cachedb.put(requestKey, requestCacheResult + ', date:' + new Date())
             .catch((err) => {
-              console.log(FgRed + '[NODE] ' + ResetColor + err)
+              console.log(colors.red + '[NODE] ' + colors.reset + err)
             })
         }).catch((err) => {
           db.put(uid, JSON.stringify({ 'status': 'failed' }))
             .catch((err) => {
-              console.log(FgRed + '[' + PRINT_MSG + '] ' + ResetColor + err)
+              console.log(colors.red + '[' + PRINT_MSG + '] ' + colors.reset + err)
             })
-          console.log(FgRed + '[' + PRINT_MSG + '] ' + ResetColor + err)
+          console.log(colors.red + '[' + PRINT_MSG + '] ' + colors.reset + err)
           res.sendStatus(400)
         })
     })
@@ -615,18 +615,18 @@ function decisionTreeCvi (req, res) {
   cachedb.get(requestKey)
     .then((value) => {
       if (notUseCache) {
-        console.log('[' + PRINT_MSG + '] ' + FgYellow + 'Request(' + uid + ') User has set the flag cache to NO in request body, goind to recompute it!\n' + ResetColor)
+        console.log('[' + PRINT_MSG + '] ' + colors.yellow + 'Request(' + uid + ') User has set the flag cache to NO in request body, goind to recompute it!\n' + colors.reset)
         throw new Error('User has set the flag cache to NO in request body, goind to recompute it!') // go to catch
       }
-      console.log('[' + PRINT_MSG + '] ' + FgGreen + 'Request(' + uid + ') Key: ' + requestKey + ' found in cache-db!\n' + ResetColor)
+      console.log('[' + PRINT_MSG + '] ' + colors.green + 'Request(' + uid + ') Key: ' + requestKey + ' found in cache-db!\n' + colors.reset)
 
       let valueArray = value.split(', date:')
       let diff = new DateDiff(new Date(), new Date(valueArray[1]))
       // if previous computation was a month ago, recompute it
       if (diff.days() > 30) {
-        console.log('[' + PRINT_MSG + '] ' + FgYellow + 'Request(' + uid + ') Key: ' + requestKey + ' has expired, goind to recompute it!\n' + ResetColor)
+        console.log('[' + PRINT_MSG + '] ' + colors.yellow + 'Request(' + uid + ') Key: ' + requestKey + ' has expired, goind to recompute it!\n' + colors.reset)
         cachedb.del(requestKey).catch((err) => { // delete previous result
-          console.log(FgRed + '[' + PRINT_MSG + '] ' + ResetColor + err)
+          console.log(colors.red + '[' + PRINT_MSG + '] ' + colors.reset + err)
         })
         throw new Error('Result has expired, goind to recompute it!') // go to catch
       }
@@ -639,11 +639,11 @@ function decisionTreeCvi (req, res) {
         const resultObj = { 'status': 'succeeded', 'result': '' }
         resultObj.result = JSON.parse(result)
         db.put(uid, JSON.stringify(resultObj)).catch((err) => {
-          console.log(FgRed + '[' + PRINT_MSG + '] ' + ResetColor + err)
+          console.log(colors.red + '[' + PRINT_MSG + '] ' + colors.reset + err)
         })
       }
     }).catch(() => { // If request has not been computed
-      console.log('[' + PRINT_MSG + '] ' + FgYellow + 'Request(' + uid + ') Key: ' + requestKey + ' not found in cache-db.\n' + ResetColor)
+      console.log('[' + PRINT_MSG + '] ' + colors.yellow + 'Request(' + uid + ') Key: ' + requestKey + ' not found in cache-db.\n' + colors.reset)
 
       // create array of requests for import
       let importPromises = []
@@ -656,7 +656,7 @@ function decisionTreeCvi (req, res) {
       // wait them all to finish
       Promise.all(importPromises)
         .then(() => {
-          console.log(FgGreen + 'Importing Finished ' + ResetColor)
+          console.log(colors.green + 'Importing Finished ' + colors.reset)
           return _writeFile(parent + '/configuration_' + uid + '.json', content, 'utf8')
         }).then(() => {
           console.log('[' + PRINT_MSG + '] Request(' + uid + ') Configuration file was saved.\n')
@@ -693,7 +693,7 @@ function decisionTreeCvi (req, res) {
           console.log('[' + PRINT_MSG + '] Request(' + uid + ') Main generated.\n')
           const dbMsg = (SIMULATION_MODE) ? 'SecreC code generated. Now compiling.' : 'SecreC code generated. Now compiling and running.'
           db.put(uid, JSON.stringify({ 'status': 'running', 'step': dbMsg })).catch((err) => {
-            console.log(FgRed + '[' + PRINT_MSG + '] ' + ResetColor + err)
+            console.log(colors.red + '[' + PRINT_MSG + '] ' + colors.reset + err)
           })
           return _unlinkIfExists(parent + '/decision-tree/.main_' + uid + '.sb.src')
         }).then(() => {
@@ -706,7 +706,7 @@ function decisionTreeCvi (req, res) {
               'status': 'running',
               'step': 'SecreC code compiled. Now running.'
             })).catch((err) => {
-              console.log(FgRed + '[NODE] ' + ResetColor + err)
+              console.log(colors.red + '[NODE] ' + colors.reset + err)
             })
             console.log('[NODE SIMULATION] Request(' + uid + ') Program compiled.\n')
             return _exec('set -o pipefail && sharemind-scripts/run.sh decision-tree/main_' + uid + '.sb  2>&1 >/dev/null | sed --expression="s/,  }/ }/g" > out_' + uid + '.json', {
@@ -719,7 +719,7 @@ function decisionTreeCvi (req, res) {
               'status': 'running',
               'step': 'SecreC code compiled and run. Now generating output.'
             })).catch((err) => {
-              console.log(FgRed + '[NODE] ' + ResetColor + err)
+              console.log(colors.red + '[NODE] ' + colors.reset + err)
             })
             console.log('[NODE] Request(' + uid + ') Program executed.\n')
             return _exec('grep --fixed-strings --text "`grep --text "' + uid + '" /etc/sharemind/server.log | tail -n 1 | cut -d " "  -f "7-8"`" /etc/sharemind/server.log | cut -d " "  -f "9-" | sed --expression="s/,  }/ }/g" >  out_' + uid + '.json', {
@@ -734,7 +734,7 @@ function decisionTreeCvi (req, res) {
               'status': 'running',
               'step': 'SecreC code run. Now generating output.'
             })).catch((err) => {
-              console.log(FgRed + '[NODE] ' + ResetColor + err)
+              console.log(colors.red + '[NODE] ' + colors.reset + err)
             })
             console.log('[NODE SIMULATION] Request(' + uid + ') Program executed.\n')
           }
@@ -778,21 +778,21 @@ function decisionTreeCvi (req, res) {
             const resultObj = { 'status': 'succeeded', 'result': '' }
             resultObj.result = JSON.parse(result)
             db.put(uid, JSON.stringify(resultObj)).catch((err) => {
-              console.log(FgRed + '[' + PRINT_MSG + '] ' + ResetColor + err)
+              console.log(colors.red + '[' + PRINT_MSG + '] ' + colors.reset + err)
             })
             requestCacheResult = result
           }
 
           cachedb.put(requestKey, requestCacheResult + ', date:' + new Date())
             .catch((err) => {
-              console.log(FgRed + '[NODE] ' + ResetColor + err)
+              console.log(colors.red + '[NODE] ' + colors.reset + err)
             })
         }).catch((err) => {
           db.put(uid, JSON.stringify({ 'status': 'failed' }))
             .catch((err) => {
-              console.log(FgRed + '[' + PRINT_MSG + '] ' + ResetColor + err)
+              console.log(colors.red + '[' + PRINT_MSG + '] ' + colors.reset + err)
             })
-          console.log(FgRed + '[' + PRINT_MSG + '] ' + ResetColor + err)
+          console.log(colors.red + '[' + PRINT_MSG + '] ' + colors.reset + err)
           res.sendStatus(400)
         })
     })
@@ -836,17 +836,17 @@ function decisionTreeMesh (req, res) {
   cachedb.get(requestKey)
     .then((value) => {
       if (notUseCache) {
-        console.log('[' + PRINT_MSG + '] ' + FgYellow + 'Request(' + uid + ') User has set the flag cache to NO in request body, goind to recompute it!\n' + ResetColor)
+        console.log('[' + PRINT_MSG + '] ' + colors.yellow + 'Request(' + uid + ') User has set the flag cache to NO in request body, goind to recompute it!\n' + colors.reset)
         throw new Error('User has set the flag cache to NO in request body, goind to recompute it!') // go to catch
       }
-      console.log('[' + PRINT_MSG + '] ' + FgGreen + 'Request(' + uid + ') Key: ' + requestKey + ' found in cache-db!\n' + ResetColor)
+      console.log('[' + PRINT_MSG + '] ' + colors.green + 'Request(' + uid + ') Key: ' + requestKey + ' found in cache-db!\n' + colors.reset)
       let valueArray = value.split(', date:')
       let diff = new DateDiff(new Date(), new Date(valueArray[1]))
       // if previous computation was a month ago, recompute it
       if (diff.days() > 30) {
-        console.log('[' + PRINT_MSG + '] ' + FgYellow + 'Request(' + uid + ') Key: ' + requestKey + ' has expired, goind to recompute it!\n' + ResetColor)
+        console.log('[' + PRINT_MSG + '] ' + colors.yellow + 'Request(' + uid + ') Key: ' + requestKey + ' has expired, goind to recompute it!\n' + colors.reset)
         cachedb.del(requestKey).catch((err) => { // delete previous result
-          console.log(FgRed + '[' + PRINT_MSG + '] ' + ResetColor + err)
+          console.log(colors.red + '[' + PRINT_MSG + '] ' + colors.reset + err)
         })
         throw new Error('Result has expired, goind to recompute it!') // go to catch
       }
@@ -859,11 +859,11 @@ function decisionTreeMesh (req, res) {
         const resultObj = { 'status': 'succeeded', 'result': '' }
         resultObj.result = JSON.parse(result)
         db.put(uid, JSON.stringify(resultObj)).catch((err) => {
-          console.log(FgRed + '[' + PRINT_MSG + '] ' + ResetColor + err)
+          console.log(colors.red + '[' + PRINT_MSG + '] ' + colors.reset + err)
         })
       }
     }).catch(() => { // If request has not been computed
-      console.log('[' + PRINT_MSG + '] ' + FgYellow + 'Request(' + uid + ') Key: ' + requestKey + ' not found in cache-db.\n' + ResetColor)
+      console.log('[' + PRINT_MSG + '] ' + colors.yellow + 'Request(' + uid + ') Key: ' + requestKey + ' not found in cache-db.\n' + colors.reset)
 
       // create array of requests for import
       let importPromises = []
@@ -876,7 +876,7 @@ function decisionTreeMesh (req, res) {
       // wait them all to finish
       Promise.all(importPromises)
         .then(() => {
-          console.log(FgGreen + 'Importing Finished ' + ResetColor)
+          console.log(colors.green + 'Importing Finished ' + colors.reset)
           return _writeFile(parent + '/configuration_' + uid + '.json', content, 'utf8')
         }).then(() => {
           console.log('[' + PRINT_MSG + '] Request(' + uid + ') Configuration file was saved.\n')
@@ -913,7 +913,7 @@ function decisionTreeMesh (req, res) {
           console.log('[' + PRINT_MSG + '] Request(' + uid + ') Main generated.\n')
           const dbMsg = (SIMULATION_MODE) ? 'SecreC code generated. Now compiling.' : 'SecreC code generated. Now compiling and running.'
           db.put(uid, JSON.stringify({ 'status': 'running', 'step': dbMsg })).catch((err) => {
-            console.log(FgRed + '[' + PRINT_MSG + '] ' + ResetColor + err)
+            console.log(colors.red + '[' + PRINT_MSG + '] ' + colors.reset + err)
           })
           return _unlinkIfExists(parent + '/decision-tree/.main_' + uid + '.sb.src')
         }).then(() => {
@@ -926,7 +926,7 @@ function decisionTreeMesh (req, res) {
               'status': 'running',
               'step': 'SecreC code compiled. Now running.'
             })).catch((err) => {
-              console.log(FgRed + '[NODE] ' + ResetColor + err)
+              console.log(colors.red + '[NODE] ' + colors.reset + err)
             })
             console.log('[NODE SIMULATION] Request(' + uid + ') Program compiled.\n')
             return _exec('set -o pipefail && sharemind-scripts/run.sh decision-tree/main_' + uid + '.sb  2>&1 >/dev/null | sed --expression="s/,  }/ }/g" > out_' + uid + '.json', {
@@ -939,7 +939,7 @@ function decisionTreeMesh (req, res) {
               'status': 'running',
               'step': 'SecreC code compiled and run. Now generating output.'
             })).catch((err) => {
-              console.log(FgRed + '[NODE] ' + ResetColor + err)
+              console.log(colors.red + '[NODE] ' + colors.reset + err)
             })
             console.log('[NODE] Request(' + uid + ') Program executed.\n')
             return _exec('grep --fixed-strings --text "`grep --text "' + uid + '" /etc/sharemind/server.log | tail -n 1 | cut -d " "  -f "7-8"`" /etc/sharemind/server.log | cut -d " "  -f "9-" | sed --expression="s/,  }/ }/g" >  out_' + uid + '.json', {
@@ -954,7 +954,7 @@ function decisionTreeMesh (req, res) {
               'status': 'running',
               'step': 'SecreC code run. Now generating output.'
             })).catch((err) => {
-              console.log(FgRed + '[NODE] ' + ResetColor + err)
+              console.log(colors.red + '[NODE] ' + colors.reset + err)
             })
             console.log('[NODE SIMULATION] Request(' + uid + ') Program executed.\n')
           }
@@ -998,21 +998,21 @@ function decisionTreeMesh (req, res) {
             const resultObj = { 'status': 'succeeded', 'result': '' }
             resultObj.result = JSON.parse(result)
             db.put(uid, JSON.stringify(resultObj)).catch((err) => {
-              console.log(FgRed + '[' + PRINT_MSG + '] ' + ResetColor + err)
+              console.log(colors.red + '[' + PRINT_MSG + '] ' + colors.reset + err)
             })
             requestCacheResult = result
           }
 
           cachedb.put(requestKey, requestCacheResult + ', date:' + new Date())
             .catch((err) => {
-              console.log(FgRed + '[NODE] ' + ResetColor + err)
+              console.log(colors.red + '[NODE] ' + colors.reset + err)
             })
         }).catch((err) => {
           db.put(uid, JSON.stringify({ 'status': 'failed' }))
             .catch((err) => {
-              console.log(FgRed + '[' + PRINT_MSG + '] ' + ResetColor + err)
+              console.log(colors.red + '[' + PRINT_MSG + '] ' + colors.reset + err)
             })
-          console.log(FgRed + '[' + PRINT_MSG + '] ' + ResetColor + err)
+          console.log(colors.red + '[' + PRINT_MSG + '] ' + colors.reset + err)
           res.sendStatus(400)
         })
     })
