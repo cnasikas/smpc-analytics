@@ -92,21 +92,6 @@ if (fs.existsSync('./sslcert/fullchain.pem')) {
 
 
 // function to return a promise to send request for import
-function _sendRequest (datasrc, mhmdDNS, attributes, uid, action) {
-  const uri = mhmdDNS[datasrc]
-  const options = { // Configure the request
-    method: 'POST',
-    uri: 'http://' + uri + action,
-    body: {
-      'attributes': attributes,
-      'datasource': datasrc + '_' + uid
-    },
-    json: true // Automatically stringifies the body to JSON
-  }
-
-  console.log(colors.green + 'Request for import sent to: ' + datasrc + ' at ' + uri + colors.reset)
-  return rp(options) // Return promise to start the request
-}
 
 // function to send requests for import and return array of promises
 function importFromServers (attributes, datasources, res, parent, uid, action, DNSfile) {
