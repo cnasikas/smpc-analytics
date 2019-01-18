@@ -81,8 +81,7 @@ if (fs.existsSync('./sslcert/fullchain.pem')) {
     }
   }).listen(HTTP_PORT)
 
-  // app.listen(port, () => console.log('Example app listening on port ' + port + '!'));
-  let server = https.createServer(options, app).listen(HTTPS_PORT, () => console.log('Example app listening on port ' + HTTP_PORT + '!'))
+  const server = https.createServer(options, app).listen(HTTPS_PORT, () => console.log('Example app listening on port ' + HTTPS_PORT + '!'))
   server.setTimeout(2000 * 60 * 60) // ((2 sec * 60 = 2 min) * 60 = 2 hours)
 } else {
   const port = 3000
