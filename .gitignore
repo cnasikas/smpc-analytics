@@ -58,7 +58,9 @@ dkms.conf
 
 # CSV & JSON files
 *.csv
+
 *.json
+!package.json
 
 # Visuals
 visuals/
