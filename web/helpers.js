@@ -2,8 +2,11 @@ const util = require('util')
 const fs = require('fs')
 const { exec } = require('child_process')
 const axios = require('axios')
+const DateDiff = require('date-diff')
+const _ = require('lodash')
 
-const { db } = require('./db')
+const { db, cachedb } = require('./db')
+const { PRINT_MSG } = require('./config')
 
 const _writeFile = util.promisify(fs.writeFile)
 const _readFile = util.promisify(fs.readFile)
@@ -97,6 +100,64 @@ const importLocally = async (attributes, datasources, parent, uid, type) => {
   return importPromises
 }
 
+const processRequest = async (uid, req, res) => {
+  const content = JSON.stringify(req.body)
+  let attributes = req.body.attributes
+  const datasources = req.body.datasources
+  let cache = req.body.cache
+  const plot = ('plot' in req.body)
+
+  await db.put(uid, JSON.stringify({ 'status': 'running' }))
+
+  if (!('plot' in req.body)) {
+    res.setHeader('Access-Control-Allow-Origin', '*')
+    res.status(202).json({ 'location': `/smpc/queue?request=${uid}` })
+  }
+
+  if (_.isArray(attributes[0])) {
+    attributes = _.uniq(_.flatten(attributes).map(a => a.name))
+  }
+
+  let requestKey = { attributes, datasources, plot }
+
+  if ('filters' in req.body && req.body.filters.conditions) {
+    let filters = req.body.filters.conditions.map(c => c.attribute)
+    requestKey.attributes = _.union(attributes, filters)
+    requestKey.plot = plot
+    requestKey.filters = filters
+  }
+
+  requestKey = JSON.stringify(requestKey)
+
+  // Check if request has been already computed
+  cache = cache && cache.toUpperCase() !== 'NO'
+
+  let cachedResponse = null
+
+  if (cache) {
+    cachedResponse = await getFromCache(requestKey, uid, plot)
+  }
+
+  return { uid, attributes, datasources, content, cache, plot, cachedResponse, requestKey }
+}
+
+const getFromCache = async (requestKey, uid) => {
+  let value = await cachedb.get(requestKey)
+  console.log('[' + PRINT_MSG + '] ' + colors.green + 'Request(' + uid + ') Key: ' + requestKey + ' found in cache-db!\n' + colors.reset)
+
+  let valueArray = value.split(', date:')
+  let diff = new DateDiff(new Date(), new Date(valueArray[1]))
+
+  // if previous computation was a month ago, recompute it
+  if (diff.days() > 30) {
+    console.log('[' + PRINT_MSG + '] ' + colors.yellow + 'Request(' + uid + ') Key: ' + requestKey + ' has expired, goind to recompute it!\n' + colors.reset)
+    await cachedb.del(requestKey)
+
+    return null
+  }
+
+  return valueArray[0]
+}
 
 const colors = {
   'red': '\x1b[31m',
@@ -114,5 +175,6 @@ module.exports = {
   _sendRequest,
   importLocally,
   importFromServers,
+  processRequest,
   colors
 }
