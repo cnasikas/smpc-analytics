@@ -6,7 +6,8 @@
   "scripts": {
     "lint": "standard",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "start": "node server.js",
+    "watch": "nodemon server.js"
   },
   "author": "Dimitris Mouris, Thanos Giannopoulos",
   "license": "ISC",
@@ -26,6 +27,7 @@
     "level": "^3.0.0",
     "morgan": "^1.9.0",
     "morgan-body": "^2.4.0",
+    "nodemon": "^1.18.9",
     "path": "^0.12.7",
     "request": "^2.87.0",
     "request-promise": "^4.2.2",
