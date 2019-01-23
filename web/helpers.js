@@ -6,7 +6,7 @@ const DateDiff = require('date-diff')
 const _ = require('lodash')
 
 const { db, cachedb } = require('./db')
-const { PRINT_MSG } = require('./config')
+const { PRINT_MSG, colors } = require('./config')
 
 const _writeFile = util.promisify(fs.writeFile)
 const _readFile = util.promisify(fs.readFile)
@@ -159,12 +159,6 @@ const getFromCache = async (requestKey, uid) => {
   return valueArray[0]
 }
 
-const colors = {
-  'red': '\x1b[31m',
-  'green': 'x1b[32m',
-  'yellow': '\x1b[33m',
-  'reset': '\x1b[0m'
-}
 
 module.exports = {
   _writeFile,
