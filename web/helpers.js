@@ -118,6 +118,14 @@ const processRequest = async (uid, req, res) => {
     attributes = _.uniq(_.flatten(attributes).map(a => a.name))
   }
 
+  attributes = attributes.map(a => {
+    if (_.isObject(a)) {
+      return a.name
+    }
+
+    return a
+  })
+
   let requestKey = { attributes, datasources, plot }
 
   if ('filters' in req.body && req.body.filters.conditions) {
@@ -125,6 +133,13 @@ const processRequest = async (uid, req, res) => {
     requestKey.attributes = _.union(attributes, filters)
     requestKey.plot = plot
     requestKey.filters = filters
+  }
+
+  if (_.includes(req.path, 'decision_tree')) {
+    const classifier = ('classifier' in req.body) ? req.body.classifier : 'ID3'
+    requestKey.attributes.push(req.body.class_attribute.name)
+    requestKey.classifier = classifier
+    requestKey.class_attribute = req.body.class_attribute.name
   }
 
   requestKey = JSON.stringify(requestKey)

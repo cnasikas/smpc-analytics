@@ -56,7 +56,7 @@ router.post('/count', async (req, res, next) => {
   }
 
   try {
-    await computeHistogram(req, res, uid, computeOptions)
+    await compute(req, res, uid, computeOptions)
   } catch (err) {
     console.log(colors.red + '[' + PRINT_MSG + '] ' + colors.reset + err)
     next(err)
@@ -91,38 +91,59 @@ router.post('/histogram', async (req, res, next) => {
   }
 
   try {
-    await computeHistogram(req, res, uid, computeOptions)
+    await compute(req, res, uid, computeOptions)
   } catch (err) {
     console.log(colors.red + '[' + PRINT_MSG + '] ' + colors.reset + err)
     next(err)
   }
 })
 
-  let generator = `python dataset-scripts/main_generator.py configuration_${uid}.json --DNS web/`
-  generator = SIMULATION_MODE ? generator + 'localDNS.json' : generator + 'MHMDdns_cvi.json'
+router.post('/decision_tree', async (req, res, next) => {
+  const uid = uuidv4()
+  const classifier = ('classifier' in req.body) ? req.body.classifier.toLowerCase() : 'id3'
 
-  let pythonScripts = {
-    generator,
-    plot: `python plot.py ../configuration_${uid}.json`,
-    web: `python web/response.py out_${uid}.txt`
+  if (!('dataset' in req.body)) {
+    res.sendStatus(400)
   }
 
-  let importOptions = {
-    uri: '/smpc/import/cvi',
-    type: 'cvi',
-    dnsFile: 'MHMDdns_cvi.json'
+  const cvi = (req.body.dataset === 'cvi')
+
+  let generator = `python dataset-scripts/${classifier}_main_generator.py configuration_${uid}.json`
+  let compileCMD = 'sharemind-scripts/sm_compile_and_run.sh decision-tree/main_'
+
+  if (SIMULATION_MODE) {
+    generator += ' --DNS web/localDNS.json'
+    compileCMD = 'sharemind-scripts/compile.sh decision-tree/main_'
+  }
+
+  const computeOptions = {
+    algorithm: 'decision_tree',
+    classifier,
+    cmd: {
+      generator,
+      compile: `${compileCMD}${uid}.sc`,
+      run: `set -o pipefail && sharemind-scripts/run.sh decision-tree/main_${uid}.sb  2>&1 >/dev/null | sed --expression="s/,  }/ }/g" > out_${uid}.json`,
+      out: 'grep --fixed-strings --text "`grep --text "' + uid + '" /etc/sharemind/server.log | tail -n 1 | cut -d " "  -f "7-8"`" /etc/sharemind/server.log | cut -d " "  -f "9-" | sed --expression="s/,  }/ }/g" >  out_' + uid + '.json',
+      plot: `python web/${classifier}_response.py out_${uid}.json configuration_${uid}.json --plot`,
+      web: `python web/${classifier}_response.py out_${uid}.json configuration_${uid}.json`
+    },
+    uri: cvi ? '/smpc/import/cvi' : '/smpc/import',
+    type: cvi ? 'cvi' : 'mesh',
+    dnsFile: cvi ? 'MHMDdns_cvi.json' : 'MHMDdns.json',
+    mainFile: path.join(BASE_DIR, `/decision-tree/.main_${uid}.sb.src`)
   }
 
   try {
-    await computeHistogram(req, res, uid, pythonScripts, importOptions)
+    await compute(req, res, uid, computeOptions)
   } catch (err) {
     console.log(colors.red + '[' + PRINT_MSG + '] ' + colors.reset + err)
     next(err)
   }
 })
 
-const computeHistogram = async (req, res, uid, computeOptions) => {
-  let { attributes, datasources, content, cache, plot, cachedResponse, requestKey } = processRequest(uid, req, res)
+const compute = async (req, res, uid, computeOptions) => {
+  let { attributes, datasources, content, cache, plot, cachedResponse, requestKey } = await processRequest(uid, req, res)
+
   let computationResponse = ''
 
   if (cache && cachedResponse) {
@@ -136,7 +157,7 @@ const computeHistogram = async (req, res, uid, computeOptions) => {
     }
   } else {
     console.log(`[${PRINT_MSG}]${colors.yellow} Request(${uid}) Key: ${requestKey} not found in cache-db.\n${colors.reset}`)
-    computationResponse = await smpcHistogram({ attributes, datasources, uid, content, plot }, computeOptions)
+    computationResponse = await smpc({ attributes, datasources, uid, content, plot }, computeOptions)
 
     let toCache = ''
     let graphName = ''
@@ -163,7 +184,7 @@ const computeHistogram = async (req, res, uid, computeOptions) => {
   }
 }
 
-const smpcHistogram = async (request, computeOptions) => {
+const smpc = async (request, computeOptions) => {
   let importPromises = []
 
   if (SIMULATION_MODE) {
