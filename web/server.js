@@ -14,13 +14,7 @@ const routes = require('./routes')
 
 const app = express()
 
-const FRONTEND_PATH = path.join(__dirname, '/frontend/')
-const SIMULATION_MODE = process.argv.some((arg) => (arg === '-sim' || arg === '--sim' || arg === '-simulation' || arg === '--simulation'))
-const PRINT_MSG = (SIMULATION_MODE) ? 'NODE SIMULATION' : 'NODE'
-const HTTP_PORT = 80
-const HTTPS_PORT = 443
-
-global.__basedir = __dirname
+const { SIMULATION_MODE, FRONTEND_PATH, HTTP_PORT, HTTPS_PORT } = require('./config')
 
 const logStream = fs.createWriteStream(path.join(__dirname, 'requests.log'), { flags: 'a' })
 morganBody(app, { stream: logStream }) // log request body
