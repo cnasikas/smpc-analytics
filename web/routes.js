@@ -32,25 +32,31 @@ router.get('/queue', async (req, res, next) => {
 router.post('/count', async (req, res, next) => {
   const uid = uuidv4()
   let generator = `python dataset-scripts/count_main_generator.py configuration_${uid}.json`
+  let compileCMD = 'sharemind-scripts/sm_compile_and_run.sh histogram/main_'
 
   if (SIMULATION_MODE) {
     generator += ' --DNS web/localDNS.json'
+    compileCMD = 'sharemind-scripts/compile.sh histogram/main_'
   }
 
-  let pythonScripts = {
-    generator,
-    plot: `python count_plot.py ../out_${uid}.txt ../configuration_${uid}.json`,
-    web: `python web/response.py out_${uid}.txt | python web/transform_response.py  configuration_${uid}.json --mapping mhmd-driver/mesh_mapping.json --mtrees_inverted mhmd-driver/m_inv.json`
-  }
-
-  let importOptions = {
+  const computeOptions = {
+    algorithm: 'histogram',
+    cmd: {
+      generator,
+      compile: `${compileCMD}${uid}.sc`,
+      run: `sharemind-scripts/run.sh histogram/main_${uid}.sb 2> out_${uid}.txt`,
+      out: 'grep --fixed-strings --text "`grep --text "' + uid + '" /etc/sharemind/server.log | tail -n 1 | cut -d " "  -f "7-8"`" /etc/sharemind/server.log | cut -d " "  -f "9-" >  out_' + uid + '.txt',
+      plot: `python count_plot.py ../out_${uid}.txt ../configuration_${uid}.json`,
+      web: `python web/response.py out_${uid}.txt | python web/transform_response.py  configuration_${uid}.json --mapping mhmd-driver/mesh_mapping.json --mtrees_inverted mhmd-driver/m_inv.json`
+    },
     uri: '/smpc/import',
     type: 'mesh',
-    dnsFile: 'MHMDdns.json'
+    dnsFile: 'MHMDdns.json',
+    mainFile: path.join(BASE_DIR, `/histogram/.main_${uid}.sb.src`)
   }
 
   try {
-    await computeHistogram(req, res, uid, pythonScripts, importOptions)
+    await computeHistogram(req, res, uid, computeOptions)
   } catch (err) {
     console.log(colors.red + '[' + PRINT_MSG + '] ' + colors.reset + err)
     next(err)
@@ -59,6 +65,38 @@ router.post('/count', async (req, res, next) => {
 
 router.post('/histogram', async (req, res, next) => {
   const uid = uuidv4()
+
+  let generator = `python dataset-scripts/main_generator.py configuration_${uid}.json --DNS web/MHMDdns_cvi.json`
+  let compileCMD = 'sharemind-scripts/sm_compile_and_run.sh histogram/main_'
+
+  if (SIMULATION_MODE) {
+    generator += 'localDNS.json'
+    compileCMD = 'sharemind-scripts/compile.sh histogram/main_'
+  }
+
+  const computeOptions = {
+    algorithm: 'histogram',
+    cmd: {
+      generator,
+      compile: `${compileCMD}${uid}.sc`,
+      run: `sharemind-scripts/run.sh histogram/main_${uid}.sb 2> out_${uid}.txt`,
+      out: 'grep --fixed-strings --text "`grep --text "' + uid + '" /etc/sharemind/server.log | tail -n 1 | cut -d " "  -f "7-8"`" /etc/sharemind/server.log | cut -d " "  -f "9-" >  out_' + uid + '.txt',
+      plot: `python plot.py ../configuration_${uid}.json`,
+      web: `python web/response.py out_${uid}.txt`
+    },
+    uri: '/smpc/import/cvi',
+    type: 'cvi',
+    dnsFile: 'MHMDdns_cvi.json',
+    mainFile: path.join(BASE_DIR, `/histogram/.main_${uid}.sb.src`)
+  }
+
+  try {
+    await computeHistogram(req, res, uid, computeOptions)
+  } catch (err) {
+    console.log(colors.red + '[' + PRINT_MSG + '] ' + colors.reset + err)
+    next(err)
+  }
+})
 
   let generator = `python dataset-scripts/main_generator.py configuration_${uid}.json --DNS web/`
   generator = SIMULATION_MODE ? generator + 'localDNS.json' : generator + 'MHMDdns_cvi.json'
@@ -83,7 +121,7 @@ router.post('/histogram', async (req, res, next) => {
   }
 })
 
-const computeHistogram = async (req, res, uid, pythonScripts, importOptions) => {
+const computeHistogram = async (req, res, uid, computeOptions) => {
   let { attributes, datasources, content, cache, plot, cachedResponse, requestKey } = processRequest(uid, req, res)
   let computationResponse = ''
 
@@ -98,7 +136,7 @@ const computeHistogram = async (req, res, uid, pythonScripts, importOptions) => 
     }
   } else {
     console.log(`[${PRINT_MSG}]${colors.yellow} Request(${uid}) Key: ${requestKey} not found in cache-db.\n${colors.reset}`)
-    computationResponse = await smpcHistogram({ attributes, datasources, uid, content, plot }, pythonScripts, importOptions)
+    computationResponse = await smpcHistogram({ attributes, datasources, uid, content, plot }, computeOptions)
 
     let toCache = ''
     let graphName = ''
@@ -125,13 +163,13 @@ const computeHistogram = async (req, res, uid, pythonScripts, importOptions) => 
   }
 }
 
-const smpcHistogram = async (request, pythonScripts, importOptions) => {
+const smpcHistogram = async (request, computeOptions) => {
   let importPromises = []
 
   if (SIMULATION_MODE) {
-    importPromises = await importLocally(request.attributes, request.datasources, request.uid, importOptions.type)
+    importPromises = await importLocally(request.attributes, request.datasources, request.uid, computeOptions.type)
   } else {
-    importPromises = await importFromServers(request.attributes, request.datasources, request.uid, importOptions.uri, importOptions.dnsFile)
+    importPromises = await importFromServers(request.attributes, request.datasources, request.uid, computeOptions.uri, computeOptions.dnsFile)
   }
 
   await Promise.all(importPromises)
@@ -140,7 +178,7 @@ const smpcHistogram = async (request, pythonScripts, importOptions) => {
   await _writeFile(path.join(BASE_DIR, `configuration_${request.uid}.json`), request.content, 'utf8')
   console.log('[' + PRINT_MSG + '] Request(' + request.uid + ') Configuration file was saved.\n')
 
-  await _exec(pythonScripts.generator, {
+  await _exec(computeOptions.cmd.generator, {
     stdio: [0, 1, 2],
     cwd: BASE_DIR,
     shell: '/bin/bash'
@@ -150,11 +188,10 @@ const smpcHistogram = async (request, pythonScripts, importOptions) => {
   const dbMsg = SIMULATION_MODE ? 'SecreC code generated. Now compiling.' : 'SecreC code generated. Now compiling and running.'
 
   await db.put(request.uid, JSON.stringify({ 'status': 'running', 'step': dbMsg }))
-  await _unlinkIfExists(path.join(BASE_DIR, `/histogram/.main_${request.uid}.sb.src`))
+  await _unlinkIfExists(computeOptions.mainFile)
   console.log('[' + PRINT_MSG + '] Old .main_' + request.uid + '.sb.src deleted.\n')
 
-  const execArg = (SIMULATION_MODE) ? 'sharemind-scripts/compile.sh histogram/main_' : 'sharemind-scripts/sm_compile_and_run.sh histogram/main_'
-  await _exec(`${execArg}${request.uid}.sc`, { stdio: [0, 1, 2], cwd: BASE_DIR, shell: '/bin/bash' })
+  await _exec(computeOptions.cmd.compile, { stdio: [0, 1, 2], cwd: BASE_DIR, shell: '/bin/bash' })
 
   await db.put(request.uid, JSON.stringify({
     'status': 'running',
@@ -163,7 +200,7 @@ const smpcHistogram = async (request, pythonScripts, importOptions) => {
 
   console.log('[NODE SIMULATION] Request(' + request.uid + ') Program compiled.\n')
 
-  await _exec('sharemind-scripts/run.sh histogram/main_' + request.uid + '.sb 2> out_' + request.uid + '.txt', {
+  await _exec(computeOptions.cmd.run, {
     stdio: [0, 1, 2],
     cwd: BASE_DIR,
     shell: '/bin/bash'
@@ -176,7 +213,7 @@ const smpcHistogram = async (request, pythonScripts, importOptions) => {
 
   console.log('[NODE] Request(' + request.uid + ') Program executed.\n')
 
-  await _exec('grep --fixed-strings --text "`grep --text "' + request.uid + '" /etc/sharemind/server.log | tail -n 1 | cut -d " "  -f "7-8"`" /etc/sharemind/server.log | cut -d " "  -f "9-" >  out_' + request.uid + '.txt', {
+  await _exec(computeOptions.cmd.out, {
     stdio: [0, 1, 2],
     cwd: BASE_DIR,
     shell: '/bin/bash'
@@ -193,9 +230,9 @@ const smpcHistogram = async (request, pythonScripts, importOptions) => {
   let execResults = ''
 
   if (request.plot) {
-    execResults = await _exec(pythonScripts.plot)
+    execResults = await _exec(computeOptions.plot)
   } else {
-    execResults = await _exec(pythonScripts.web, { cwd: BASE_DIR, shell: '/bin/bash' })
+    execResults = await _exec(computeOptions.web, { cwd: BASE_DIR, shell: '/bin/bash' })
   }
 
   const { stdout, stderr } = execResults

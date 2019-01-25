@@ -159,7 +159,6 @@ const getFromCache = async (requestKey, uid) => {
   return valueArray[0]
 }
 
-
 module.exports = {
   _writeFile,
   _exec,
